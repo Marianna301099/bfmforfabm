@@ -16,7 +16,7 @@
 
    use fabm_types
    use ogs_bfm_shared
-   use fabm_particle
+!  use fabm_particle
 
    use ogs_bfm_pelagic_base
 
@@ -70,17 +70,6 @@
       type (type_state_variable_id) :: id_R8c,id_R8p,id_R8n,id_R8s          !  large particulate organic carbon
       type (type_state_variable_id) :: id_X1c,id_X2c                        !  coloured dissolved organic carbon
       type (type_state_variable_id) :: id_O5c                               !  Free calcite (liths) - used by calcifiers only
-      type (type_model_id)          :: id_size_up, id_size_down, id_size_max
-      type (type_state_variable_id) :: id_size_up_c,id_size_down_c          !  indicator for diatoms asexual reproduction
-      type (type_state_variable_id) :: id_size_up_n,id_size_down_n          !  indicator for diatoms asexual reproduction
-      type (type_state_variable_id) :: id_size_up_p,id_size_down_p          !  indicator for diatoms asexual reproduction
-      type (type_state_variable_id) :: id_size_up_chl,id_size_down_chl      !  indicator for diatoms asexual reproduction
-      type (type_state_variable_id) :: id_size_up_s,id_size_down_s          !  indicator for diatoms asexual reproduction
-      type (type_state_variable_id) :: id_size_max_c                        !  auxospore size 
-      type (type_state_variable_id) :: id_size_max_n                        !  
-      type (type_state_variable_id) :: id_size_max_p                        !  
-      type (type_state_variable_id) :: id_size_max_chl                      !  
-      type (type_state_variable_id) :: id_size_max_s                        !  
       ! Environmental dependencies
       type (type_dependency_id)            :: id_ETW   ! PAR and temperature
 !     type (type_dependency_id)            :: id_parEIR,id_ETW   ! PAR and temperature
@@ -106,6 +95,7 @@
       type (type_diagnostic_variable_id) :: id_rr1c  ! lysis fraction to labile DOC
       type (type_diagnostic_variable_id) :: id_rrc   ! total respiration
       type (type_diagnostic_variable_id) :: id_rugc  ! gross primary production
+      type (type_diagnostic_variable_id) :: id_calcflux !calcite flux exists only when associated to a carbon release from phyto
       type (type_diagnostic_variable_id) :: id_flPIR2c  ! release to semi-labile transparent DOC
       type (type_diagnostic_variable_id) :: id_flPIR2c_act  ! activity release to semi-labile DOC
       type (type_diagnostic_variable_id) :: id_flPIR2c_tot  ! total release to semi-labile DOC      
@@ -154,13 +144,10 @@
       real(rk) :: p_rPIm
       real(rk) :: p_fX1p, p_fX2p
       real(rk) :: p_fR6
-      real(rk) :: p_arepr_rate,p_srepr_rate,p_min_biomass
       integer :: p_switchDOC, p_switchSi,p_limnut,p_switchChl,p_Esource
-      logical :: use_Si,use_repr
-      logical :: p_netgrowth
+      logical :: use_Si,p_netgrowth
       logical :: use_CaCO3
       integer :: p_OT
-
    contains
 
       ! Model procedures
@@ -239,7 +226,6 @@ contains
       call self%get_parameter(self%p_xqp,    'p_xqp'   ,     '-',   'Multiplication factor for luxury storage')
 !                   ---- Si limitation control ----
       call self%get_parameter(self%use_Si,   'use_Si','',          'use silicate',default=.false.)
-      call self%get_parameter(self%use_repr, 'use_repr','',          'use reproductive dynamics',default=.false.)
       if (self%use_Si) then 
           call self%get_parameter(self%p_switchSi, 'p_switchSi',   '[1-2]',    'Switch for Silica limitation')
 !                             1. Si limitation is controlled by external Si
@@ -250,12 +236,7 @@ contains
           call self%get_parameter(self%p_Contois,  'p_Contois', '>=0', ' If >0, use Contois formulation')
           call self%get_parameter(self%p_qus,      'p_qus',  'm3/mgC/d', 'membrane affinity for Si')
           call self%get_parameter(self%p_qslc,     'p_qslc', 'mmolSi/mgC','minimum quotum for Si:C')
-          call self%get_parameter(self%p_qscPPY,   'p_qscPPY','mmolSi/mgC',  'reference quontum Si:C')
-          if (self%use_repr) then 
-              call self%get_parameter(self%p_arepr_rate,   'p_arepr_rate','1/d',  'asexual reproduction rate for diatoms',default=0.0_rk)
-              call self%get_parameter(self%p_srepr_rate,   'p_srepr_rate','1/d',  'sexual reproduction rate for diatoms',default=0.0_rk)
-              call self%get_parameter(self%p_min_biomass,   'p_min_biomass','mgC/m3',  'quiescent biomass threshold',default=0.0_rk)
-          endif
+          call self%get_parameter(self%p_qscPPY,   'p_qscPPY','mmolSi/mgC',  'reference quotum Si:C')
       endif
 !                   ---- nutrient stressed sinking ----
       call self%get_parameter(self%p_esNI,  'p_esNI',       '-', 'Nutrient stress threshold for sinking')
@@ -327,45 +308,6 @@ contains
       if (self%use_Si) call self%register_state_dependency(self%id_R8s,'R8s','mmol Si/m^3','large POS')
       call self%register_state_dependency(self%id_X1c,'X1c','mg C/m^3','labile CDOM')
       call self%register_state_dependency(self%id_X2c,'X2c','mg C/m^3','semilabile CDOM')
-      if (self%use_Si .AND. self%use_repr) then
-
-          call self%register_state_dependency(self%id_size_up_c,'size_up_c','mg C/m^3','Concentration of diatoms one size class grater')
-          call self%register_state_dependency(self%id_size_up_p,'size_up_p','mmol P/m^3','Concentration of diatoms one size class grater')
-          call self%register_state_dependency(self%id_size_up_n,'size_up_n','mmol N/m^3','Concentration of diatoms one size class grater')
-          call self%register_state_dependency(self%id_size_up_s,'size_up_s','mmol Si/m^3','Concentration of diatoms one size class grater')
-          call self%register_state_dependency(self%id_size_up_chl,'size_up_chl','mg Chl/m^3','Concentration of diatoms one size class grater')
-          call self%register_model_dependency(self%id_size_up,'size_up')
-          call self%request_coupling_to_model(self%id_size_up_c,self%id_size_up,'c')    
-          call self%request_coupling_to_model(self%id_size_up_p,self%id_size_up,'p')    
-          call self%request_coupling_to_model(self%id_size_up_n,self%id_size_up,'n')    
-          call self%request_coupling_to_model(self%id_size_up_s,self%id_size_up,'s')    
-          call self%request_coupling_to_model(self%id_size_up_chl,self%id_size_up,'Chl')    
-
-          call self%register_state_dependency(self%id_size_down_c,'size_down_c','mg C/m^3','Concentration of diatoms one size class smaller')
-          call self%register_state_dependency(self%id_size_down_p,'size_down_p','mg C/m^3','Concentration of diatoms one size class smaller')
-          call self%register_state_dependency(self%id_size_down_n,'size_down_n','mg C/m^3','Concentration of diatoms one size class smaller')
-          call self%register_state_dependency(self%id_size_down_s,'size_down_s','mg C/m^3','Concentration of diatoms one size class smaller')
-          call self%register_state_dependency(self%id_size_down_chl,'size_down_chl','mg C/m^3','Concentration of diatoms one size class smaller')
-          call self%register_model_dependency(self%id_size_down,'size_down')
-          call self%request_coupling_to_model(self%id_size_down_c,self%id_size_down,'c')    
-          call self%request_coupling_to_model(self%id_size_down_p,self%id_size_down,'p')    
-          call self%request_coupling_to_model(self%id_size_down_n,self%id_size_down,'n')    
-          call self%request_coupling_to_model(self%id_size_down_s,self%id_size_down,'s')    
-          call self%request_coupling_to_model(self%id_size_down_chl,self%id_size_down,'Chl')    
-
-          call self%register_state_dependency(self%id_size_max_c,'size_max_c','mg C/m^3','auxospores concentration of diatoms ')
-          call self%register_state_dependency(self%id_size_max_p,'size_max_p','mg C/m^3','auxospores concentration of diatoms ')
-          call self%register_state_dependency(self%id_size_max_n,'size_max_n','mg C/m^3','auxospores concentration of diatoms ')
-          call self%register_state_dependency(self%id_size_max_s,'size_max_s','mg C/m^3','auxospores concentration of diatoms ')
-          call self%register_state_dependency(self%id_size_max_chl,'size_max_chl','mg C/m^3','auxospores concentration of diatoms ')
-          call self%register_model_dependency(self%id_size_max,'size_max')
-          call self%request_coupling_to_model(self%id_size_max_c,self%id_size_max,'c')    
-          call self%request_coupling_to_model(self%id_size_max_p,self%id_size_max,'p')    
-          call self%request_coupling_to_model(self%id_size_max_n,self%id_size_max,'n')    
-          call self%request_coupling_to_model(self%id_size_max_s,self%id_size_max,'s')    
-          call self%request_coupling_to_model(self%id_size_max_chl,self%id_size_max,'Chl')    
-
-      endif
       ! Register environmental dependencies (temperature, shortwave radiation)
 !     call self%register_dependency(self%id_par,standard_variables%downwelling_photosynthetic_radiative_flux)
       call self%register_dependency(self%id_ETW,standard_variables%temperature)
@@ -412,8 +354,9 @@ contains
       call self%register_diagnostic_variable(self%id_sea,  'sea', 'mgC/m3/d','activity excretion',output=output_none)
       call self%register_diagnostic_variable(self%id_seo,  'seo', 'mgC/m3/d','nutrient stress excretion',output=output_none)
       call self%register_diagnostic_variable(self%id_rr1c, 'rr1c','mgC/m3/d','lysis fraction to labile DOC',output=output_none)
-      call self%register_diagnostic_variable(self%id_rrc,  'rrc', 'mgC/m3/d','total respiration',output=output_none)
+      call self%register_diagnostic_variable(self%id_rrc,  'rrc', 'mgC/m3/d','total respiration')
       call self%register_diagnostic_variable(self%id_rugc, 'rugc','mgC/m3/d','Gross primary production')
+      call self%register_diagnostic_variable(self%id_rugc, 'calcflux','mgC/m3/d','calcite flux')
       call self%register_diagnostic_variable(self%id_flPIR2c_tot,'flPIR2c_tot', 'mgC/m3/d', 'total flux to semilabile DOC',output=output_none)      
       call self%register_diagnostic_variable(self%id_flPIR2c_act,'flPIR2c_act', 'mgC/m3/d', 'activity flux to semilabile DOC',output=output_none)
       call self%register_diagnostic_variable(self%id_flPIR2c,    'flPIR2c',     'mgC/m3/d', 'flux to transparent semilabile DOC',output=output_none)
@@ -524,17 +467,6 @@ contains
       real(rk) :: rr6n, rr1n, rr6p, rr1p
       real(rk) :: rums, miss, rups, runs
       real(rk) :: rho_Chl, rate_Chl, chl_opt
-      real(rk) :: size_up_c,size_down_c,size_max_c
-      real(rk) :: size_up_p,size_down_p,size_max_p
-      real(rk) :: size_up_n,size_down_n,size_max_n
-      real(rk) :: size_up_s,size_down_s,size_max_s
-      real(rk) :: size_up_chl,size_down_chl,size_max_chl
-      real(rk) :: q_bio, base_rate
-      real(rk) :: arepr_c,srepr_c
-      real(rk) :: arepr_p,srepr_p
-      real(rk) :: arepr_n,srepr_n
-      real(rk) :: arepr_s,srepr_s
-      real(rk) :: arepr_l,srepr_l
 
       ! Enter spatial loops (if any)
       _LOOP_BEGIN_
@@ -558,21 +490,6 @@ contains
          _GET_(self%id_chl,phytol)
          if (self%use_Si) then
             _GET_(self%id_s,phytos)
-         endif
-
-         if (self%use_Si .AND. self%use_repr) then
-
-            _GET_(self%id_size_down_c,size_down_c)
-            _GET_(self%id_size_down_p,size_down_p)
-            _GET_(self%id_size_down_n,size_down_n)
-            _GET_(self%id_size_down_s,size_down_s)
-            _GET_(self%id_size_down_chl,size_down_chl)
-
-            _GET_(self%id_size_max_c,size_max_c)
-            _GET_(self%id_size_max_p,size_max_p)
-            _GET_(self%id_size_max_n,size_max_n)
-            _GET_(self%id_size_max_s,size_max_s)
-            _GET_(self%id_size_max_chl,size_max_chl)
          endif
 
          ! Retrieve ambient nutrient concentrations
@@ -829,7 +746,7 @@ end select
 
 !CEA Activity excretion produces CDOM, nutrient-stress excretion dont  
 !SEAMLESS  call quota_flux( iiPel, ppphytoc, ppphytoc,ppR2l, 0.02D0 * flPIR2c, tfluxC ) ! flux to CDOM
-  f2cdom = self%p_fX2p * ( qlcPPY/self%p_qlcPPY ) 
+  f2cdom = self%p_fX2p * ( (phytol/phytoc)/self%p_qlcPPY ) 
   _SET_ODE_(self%id_c, -f2cdom * flPIR2c)
   _SET_ODE_(self%id_X2c,f2cdom * flPIR2c)
 
@@ -849,7 +766,6 @@ end select
 !SEAMLESS  call flux_vector( iiPel, ppO2o,ppO2o, rugc/ MW_C ) 
   _SET_ODE_(self%id_O2o,rugc/MW_C)
 !SEAMLESS
-
  !-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
  ! Potential-Net prim prod. (mgC /m3/d)
  !-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
@@ -924,60 +840,6 @@ run  =   max(  ZERO, ( sum- slc)* phytoc)  ! net production
   sunPPY  =   run/( p_small+ phytoc)
 
  _SET_DIAGNOSTIC_(self%id_sunPPY, sunPPY)
- !-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
- ! Effect of sexual-asexual reproduction for diatoms
- !-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-  if (self%use_Si .AND. self%use_repr) then 
-! quieiscence biomass
-      q_bio=max(0.0_rk,phytoc-self%p_min_biomass)/max(phytoc-self%p_min_biomass,p_small)
-! base rate corresponds to net growth rate it modulates splliting and sexual reproduction
-      base_rate=sunPPY
-
-      arepr_c=q_bio*self%p_arepr_rate*base_rate*phytoc
-      srepr_c=q_bio*self%p_srepr_rate*base_rate*phytoc
-
-      arepr_p=q_bio*self%p_arepr_rate*base_rate*phytop
-      srepr_p=q_bio*self%p_srepr_rate*base_rate*phytop
-
-      arepr_n=q_bio*self%p_arepr_rate*base_rate*phyton
-      srepr_n=q_bio*self%p_srepr_rate*base_rate*phyton
-
-      arepr_s=q_bio*self%p_arepr_rate*base_rate*phytos
-      srepr_s=q_bio*self%p_srepr_rate*base_rate*phytos
-
-      arepr_l=q_bio*self%p_arepr_rate*base_rate*phytol
-      srepr_l=q_bio*self%p_srepr_rate*base_rate*phytol
-
-      _SET_ODE_(self%id_c          ,-arepr_c)
-      _SET_ODE_(self%id_size_down_c,+arepr_c)
-  
-      _SET_ODE_(self%id_c         ,-srepr_c)
-      _SET_ODE_(self%id_size_max_c,+srepr_c)
-
-      _SET_ODE_(self%id_p          ,-arepr_p)
-      _SET_ODE_(self%id_size_down_p,+arepr_p)
-  
-      _SET_ODE_(self%id_p         ,-srepr_p)
-      _SET_ODE_(self%id_size_max_p,+srepr_p)
-
-      _SET_ODE_(self%id_n          ,-arepr_n)
-      _SET_ODE_(self%id_size_down_n,+arepr_n)
-  
-      _SET_ODE_(self%id_n         ,-srepr_n)
-      _SET_ODE_(self%id_size_max_n,+srepr_n)
-
-      _SET_ODE_(self%id_s          ,-arepr_s)
-      _SET_ODE_(self%id_size_down_s,+arepr_s)
-  
-      _SET_ODE_(self%id_s         ,-srepr_s)
-      _SET_ODE_(self%id_size_max_s,+srepr_s)
-
-      _SET_ODE_(self%id_chl          ,-arepr_l)
-      _SET_ODE_(self%id_size_down_chl,+arepr_l)
-  
-      _SET_ODE_(self%id_chl         ,-srepr_l)
-      _SET_ODE_(self%id_size_max_chl,+srepr_l)
-  end if
   !-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
   ! Nutrient dynamics: NITROGEN
   !-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
@@ -1198,6 +1060,7 @@ run  =   max(  ZERO, ( sum- slc)* phytoc)  ! net production
 !SEAMLESS     call flux_vector( iiPel, ppO3c,ppO5c, qccPPY(phyto, :)*rr6c )
      _SET_ODE_(self%id_O3c,-qccPPY*rr6c) 
      _SET_ODE_(self%id_O5c,+qccPPY*rr6c) 
+     _SET_DIAGNOSTIC_(self%id_calcflux, qccPPY*rr6c)
 !SEAMLESS     call flux_vector( iiPel, ppO3h,ppO3h, -C2ALK*qccPPY(phyto, :)*rr6c )
      _SET_ODE_(self%id_O3h, -2_rk*qccPPY*rr6c)
      _SET_DIAGNOSTIC_(self%id_O3hconume_for_CaCO3prec, -2_rk*qccPPY*rr6c)

@@ -332,7 +332,7 @@ contains
       call self%register_diagnostic_variable(self%id_rut_c, 'rut_c', 'mgC/m3/d', 'carbon ingestion rate',output=output_none)
       call self%register_diagnostic_variable(self%id_rut_n, 'rut_n', 'mgC/m3/d', 'nitrogen ingestion rate',output=output_none)
       call self%register_diagnostic_variable(self%id_rut_p, 'rut_p', 'mgC/m3/d', 'phosphorus ingestion rate',output=output_none)
-      call self%register_diagnostic_variable(self%id_rrc,   'rrc',   'mgC/m3/d', 'respiration rate',output=output_none)
+      call self%register_diagnostic_variable(self%id_rrc,   'rrc',   'mgC/m3/d', 'respiration rate')
       call self%register_diagnostic_variable(self%id_rdo_c, 'rdo_c', 'mgC/m3/d', 'low oxygen mortality rate',output=output_none)
       call self%register_diagnostic_variable(self%id_rd_c,  'rd_c',  'mgC/m3/d', 'density dependent mortality rate',output=output_none)
       call self%register_diagnostic_variable(self%id_rq6c,  'rq6c',  'mgC/m3/d', 'carbon egestion rate',output=output_none)
@@ -354,7 +354,7 @@ contains
      do iprey=1,self%nprey
        write (index,'(i0)') iprey
        if (self%p_isP2(iprey).eq.1) then
-       call self%register_diagnostic_variable(self%id_CaCO3precip(iprey),'_'//trim(index)//'_CaCO3precip','mg C/m^3/d','prey '//trim(index)//' CaCO3precip',output=output_none)
+       call self%register_diagnostic_variable(self%id_CaCO3precip(iprey),'_'//trim(index)//'_CaCO3precip','mg C/m^3/d','prey '//trim(index)//' CaCO3precip')
        call self%register_diagnostic_variable(self%id_CaCO3_to_O3h(iprey),'_'//trim(index)//'_consumeO3h_for_CaCO3precip','mmol/m^3/d','prey '//trim(index)//' consumeO3h_for_CaCO3precip',output=output_none)
        endif
 

@@ -322,7 +322,7 @@
         call self%register_diagnostic_variable(self%id_sut,  'sut',  '1/d',      'specific uptake rate',output=output_none)
         call self%register_diagnostic_variable(self%id_rugn, 'rugn', 'tbd',      'tbd',output=output_none)
         call self%register_diagnostic_variable(self%id_rugp, 'rugp', 'tbd',      'tbd',output=output_none)
-        call self%register_diagnostic_variable(self%id_rrtc, 'rrtc', 'tbd',      'tbd',output=output_none)
+        call self%register_diagnostic_variable(self%id_rrtc, 'rrtc', 'tbd',      'tbd')
         call self%register_diagnostic_variable(self%id_rrsc, 'rrsc', 'tbd',      'tbd',output=output_none)
         call self%register_diagnostic_variable(self%id_rrac, 'rrac', 'tbd',      'tbd',output=output_none)
         call self%register_diagnostic_variable(self%id_rric, 'rric', 'tbd',      'tbd',output=output_none)
@@ -347,7 +347,7 @@
       do iprey=1,self%nprey
        write (index,'(i0)') iprey
        if (self%p_isP2(iprey).eq.1) then
-         call self%register_diagnostic_variable(self%id_CaCO3precip(iprey),'_'//trim(index)//'_CaCO3precip','mgC/m^3/d','prey '//trim(index)//' CaCO3precip',output=output_none)
+         call self%register_diagnostic_variable(self%id_CaCO3precip(iprey),'_'//trim(index)//'_CaCO3precip','mgC/m^3/d','prey '//trim(index)//' CaCO3precip')
          call self%register_diagnostic_variable(self%id_CaCO3_to_O3h(iprey),'_'//trim(index)//'_consumeO3h_for_CaCO3precip','mmol/m^3/d','prey '//trim(index)//' consumeO3h_for_CaCO3precip',output=output_none)
        endif
       end do
@@ -566,7 +566,7 @@
       !-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
       rrsc = self%p_srs*et*zooc
       ! the activity respiration is derived from the other constant parameters
-      rrac = max( rugc*(ONE - self%p_pu - self%p_pu_ea), ZERO)
+      rrac = rugc*(ONE - self%p_pu - self%p_pu_ea)
       rrtc = rrsc + rrac
       ! call quota_flux(iiPel, ppzooc, ppzooc, ppO3c, rrtc, tfluxC)
       _SET_ODE_(self%id_c, -rrtc)
@@ -583,7 +583,7 @@
       ! and partitioning between particulate and dissolved
       !-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
       rdc  = ((ONE - eO2)*self%p_sdo + self%p_sd)*zooc
-      reac = max( rugc*(ONE - self%p_pu)*self%p_pu_ea , ZERO)
+      reac = rugc*(ONE - self%p_pu)*self%p_pu_ea
       rric = reac + rdc
       rr1c = rric*self%p_pe_R1c
       rr6c = rric*(ONE - self%p_pe_R1c)
