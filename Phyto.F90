@@ -356,7 +356,7 @@ contains
       call self%register_diagnostic_variable(self%id_rr1c, 'rr1c','mgC/m3/d','lysis fraction to labile DOC',output=output_none)
       call self%register_diagnostic_variable(self%id_rrc,  'rrc', 'mgC/m3/d','total respiration')
       call self%register_diagnostic_variable(self%id_rugc, 'rugc','mgC/m3/d','Gross primary production')
-      call self%register_diagnostic_variable(self%id_rugc, 'calcflux','mgC/m3/d','calcite flux')
+      call self%register_diagnostic_variable(self%id_calcflux, 'calcflux','mgC/m3/d','calcite flux')
       call self%register_diagnostic_variable(self%id_flPIR2c_tot,'flPIR2c_tot', 'mgC/m3/d', 'total flux to semilabile DOC',output=output_none)      
       call self%register_diagnostic_variable(self%id_flPIR2c_act,'flPIR2c_act', 'mgC/m3/d', 'activity flux to semilabile DOC',output=output_none)
       call self%register_diagnostic_variable(self%id_flPIR2c,    'flPIR2c',     'mgC/m3/d', 'flux to transparent semilabile DOC',output=output_none)
